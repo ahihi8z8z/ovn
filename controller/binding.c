@@ -335,7 +335,7 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     if (!ovs_idl_txn) {
         return;
     }
-    
+    bool qos_found = false;
     const struct ovsrec_qos *qos;
     OVSREC_QOS_TABLE_FOR_EACH (qos, qos_table) {
         for (int j = 0; j < pb->n_queue_ids; j++) {
@@ -359,22 +359,25 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                 if (!ovn_port || (strcmp(ovn_port, q->port) || strcmp(source_port, pb->queue_source_ports[j]))) {
                     continue;
                 }
-
+                qos_found = true;
                 ovsrec_qos_update_queues_delkey(qos, qos->key_queues[i]);
                 ovsrec_queue_delete(queue);
 
                 hmap_remove(queue_map, &q->node);
                 qos_queue_erase_entry(q);
 
-                const struct ovsrec_port *port =
-                    ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
-                if (port) {
-                    ovsrec_port_set_qos(port, NULL);
-                }
-                ovsrec_qos_delete(qos);
-                return;
             }
         }
+
+        if (qos_found) {
+            const struct ovsrec_port *port =
+                ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
+            if (port) {
+                ovsrec_port_set_qos(port, NULL);
+            }
+            ovsrec_qos_delete(qos);
+        }
+        return;
     }
 }
 //--- Hai
