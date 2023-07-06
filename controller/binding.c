@@ -278,7 +278,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     }
 
     if (!qos) {
-        // VLOG_INFO("Khong co qos");
+        VLOG_INFO("Khong co qos");
         qos = ovsrec_qos_insert(ovs_idl_txn);
         ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
         ovsrec_port_set_qos(port, qos);
