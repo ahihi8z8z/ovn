@@ -297,7 +297,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
 
         const char *p = smap_get(&queue->external_ids, "ovn_port");
         const char *sp = smap_get(&queue->external_ids, "source_port");
-        if ((NULL != source_port) && p && (!strcmp(p, ovn_port) && !strcmp(sp, source_port) ) {
+        if ((NULL != source_port) && p && (!strcmp(p, ovn_port) && !strcmp(sp, source_port))) {
             break;
         }
     }
@@ -354,7 +354,7 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                 const char *source_port = smap_get(
                         &queue->external_ids,"source_port");
 
-                if (!ovn_port || (strcmp(ovn_port, q->port) && strcmp(source_port, pb->queue_source_ports[j])) {
+                if (!ovn_port || (strcmp(ovn_port, q->port) && strcmp(source_port, pb->queue_source_ports[j]))) {
                     continue;
                 }
 
@@ -2252,7 +2252,7 @@ binding_run(struct binding_ctx_in *b_ctx_in, struct binding_ctx_out *b_ctx_out)
     shash_destroy(&bridge_mappings);
     /* Remove stale QoS entries. */
     ovs_qos_entries_gc(b_ctx_in->ovs_idl_txn, b_ctx_in->ovsrec_port_by_qos,
-                       b_ctx_in->qos_table, b_ctx_out->qos_map);
+                       b_ctx_in->qos_table, b_ctx_out->qos_map,pb);
 
     cleanup_claimed_port_timestamps();
 }
