@@ -207,9 +207,9 @@ static void get_vif_port_from_iface(const struct binding_ctx_in *b_ctx_in,
                 const struct ovsrec_interface *iface_rec;
                 iface_rec = port_rec->interfaces[j];
                 iface_id_1 = smap_get(&iface_rec->external_ids, "iface-id");
-                VLOG_INFO("ovs iface-id %s", iface_id_1);
+                // VLOG_INFO("ovs iface-id %s", iface_id_1);
                 if (iface_id_1 && !strcmp(iface_id_1,iface_id_2) ) {
-                    VLOG_INFO("found ovs port");
+                    // VLOG_INFO("found ovs port");
                     *pport = port_rec;
                     return;
                 }
@@ -278,7 +278,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     }
 
     if (!qos) {
-        VLOG_INFO("Khong cos qos");
+        VLOG_INFO("Khong co qos");
         qos = ovsrec_qos_insert(ovs_idl_txn);
         ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
         ovsrec_port_set_qos(port, qos);
@@ -370,6 +370,7 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
         }
 
         if (qos->n_queues == 1) {
+            VLOG_INFO("Enter delete qos")
             const struct ovsrec_port *port =
                 ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
             if (port) {
@@ -407,7 +408,7 @@ configure_qos(const struct sbrec_port_binding *pb,
     // Add multi queue for ovn port
     if ( pb->n_queue_ids > 0) {
         for (int i = 0; i < pb->n_queue_ids; i++) {
-            VLOG_INFO("Into set queue func");
+            // VLOG_INFO("Into set queue func");
             unsigned long long min;
             str_to_ullong(pb->queue_min_value[i],10,&min);
             uint32_t hash_temp = hash_string(pb->logical_port, pb->queue_ids[i]);
@@ -423,7 +424,7 @@ configure_qos(const struct sbrec_port_binding *pb,
                     add_ovs_qos_table_entry(b_ctx_in->ovs_idl_txn, temp_port, min,
                                             max_rate, burst, pb->queue_ids[i],
                                             pb->logical_port,pb->queue_source_ports[i]);
-                    VLOG_INFO("end add ovs qos table");
+                    // VLOG_INFO("end add ovs qos table");
                     if (!temp) {
                         temp = xzalloc(sizeof *temp);
                         hmap_insert(b_ctx_out->qos_map, &temp->node, hash_temp);
