@@ -370,7 +370,7 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
         }
 
         if (qos->n_queues == 1) {
-            VLOG_INFO("Enter delete qos")
+            VLOG_INFO("Enter delete qos");
             const struct ovsrec_port *port =
                 ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
             if (port) {
