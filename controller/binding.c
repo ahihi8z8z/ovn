@@ -366,16 +366,13 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                 hmap_remove(queue_map, &q->node);
                 qos_queue_erase_entry(q);
 
+                const struct ovsrec_port *port =
+                    ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
+                if (port) {
+                    ovsrec_port_set_qos(port, NULL);
+                }
+                ovsrec_qos_delete(qos);
             }
-        }
-        VLOG_INFO("qos->n_queues == %d",qos->n_queues);
-        if (qos->n_queues == 1) {
-            const struct ovsrec_port *port =
-                ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
-            if (port) {
-                ovsrec_port_set_qos(port, NULL);
-            }
-            ovsrec_qos_delete(qos);
         }
     }
 }
