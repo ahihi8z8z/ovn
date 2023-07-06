@@ -278,7 +278,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     }
 
     if (!qos) {
-        VLOG_INFO("Khong co qos");
+        // VLOG_INFO("Khong co qos");
         qos = ovsrec_qos_insert(ovs_idl_txn);
         ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
         ovsrec_port_set_qos(port, qos);
@@ -368,9 +368,8 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
 
             }
         }
-
+        VLOG_INFO("qos->n_queues == %d",qos->n_queues);
         if (qos->n_queues == 1) {
-            VLOG_INFO("Enter delete qos");
             const struct ovsrec_port *port =
                 ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
             if (port) {
