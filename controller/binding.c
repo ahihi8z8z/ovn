@@ -278,6 +278,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     }
 
     if (!qos) {
+        VLOG_INFO("Khong cos qos");
         qos = ovsrec_qos_insert(ovs_idl_txn);
         ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
         ovsrec_port_set_qos(port, qos);
@@ -424,7 +425,6 @@ configure_qos(const struct sbrec_port_binding *pb,
                                             pb->logical_port,pb->queue_source_ports[i]);
                     VLOG_INFO("end add ovs qos table");
                     if (!temp) {
-                        VLOG_INFO("Khong cos queue");
                         temp = xzalloc(sizeof *temp);
                         hmap_insert(b_ctx_out->qos_map, &temp->node, hash_temp);
                         temp->port = xstrdup(pb->logical_port);
@@ -442,7 +442,7 @@ configure_qos(const struct sbrec_port_binding *pb,
     return;
     }
 
-        const char *network = smap_get(&pb->options, "qos_physical_network");
+    const char *network = smap_get(&pb->options, "qos_physical_network");
     uint32_t hash = hash_string(pb->logical_port, 0);
     struct qos_queue *q = find_qos_queue(b_ctx_out->qos_map, hash,
                                          pb->logical_port,NULL);
