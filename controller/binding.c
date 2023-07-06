@@ -335,15 +335,16 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     if (!ovs_idl_txn) {
         return;
     }
-    for (int j = 0; j < pb->n_queue_ids; j++) {
-        struct qos_queue *q = find_qos_queue(
-                queue_map, hash_string(pb->logical_port, pb->queue_ids[j]),
-                pb->logical_port,pb->queue_source_ports[j]);
-        if (!q) {
-            continue;
-        } 
-        const struct ovsrec_qos *qos;
-        OVSREC_QOS_TABLE_FOR_EACH (qos, qos_table) {
+    
+    const struct ovsrec_qos *qos;
+    OVSREC_QOS_TABLE_FOR_EACH (qos, qos_table) {
+        for (int j = 0; j < pb->n_queue_ids; j++) {
+            struct qos_queue *q = find_qos_queue(
+                    queue_map, hash_string(pb->logical_port, pb->queue_ids[j]),
+                    pb->logical_port,pb->queue_source_ports[j]);
+            if (!q) {
+                continue;
+            } 
             for (size_t i = 0; i < qos->n_queues; i++) {
                 struct ovsrec_queue *queue = qos->value_queues[i];
                 if (!queue) {
@@ -355,27 +356,26 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                 const char *source_port = smap_get(
                         &queue->external_ids,"source_port");
 
-                if (!ovn_port || (strcmp(ovn_port, q->port) && strcmp(source_port, pb->queue_source_ports[j]))) {
+                if (!ovn_port || (strcmp(ovn_port, q->port) || strcmp(source_port, pb->queue_source_ports[j]))) {
                     continue;
                 }
 
                 ovsrec_qos_update_queues_delkey(qos, qos->key_queues[i]);
                 ovsrec_queue_delete(queue);
 
-                if (qos->n_queues == 1) {
-                    const struct ovsrec_port *port =
-                        ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
-                    if (port) {
-                        ovsrec_port_set_qos(port, NULL);
-                    }
-                    ovsrec_qos_delete(qos);
-                }
-
                 hmap_remove(queue_map, &q->node);
                 qos_queue_erase_entry(q);
 
-                break;
             }
+        }
+
+        if (qos->n_queues == 1) {
+            const struct ovsrec_port *port =
+                ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
+            if (port) {
+                ovsrec_port_set_qos(port, NULL);
+            }
+            ovsrec_qos_delete(qos);
         }
     }
 }
@@ -502,7 +502,7 @@ ovs_qos_entries_gc(struct ovsdb_idl_txn *ovs_idl_txn,
             }
 
             const char *port = smap_get(&queue->external_ids, "ovn_port");
-            const char *src_port = smap_get(&queue->external_ids, "source_port");
+            const char *src_port = smap_get(&queue->external_ids, "source_port"); //+++ Hai
             if (!port && !src_port) {
                 continue;
             }
