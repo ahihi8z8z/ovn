@@ -3704,6 +3704,30 @@ tcp.flags = RST;
       </column>
     </group>
 
+    <group title="Minimum queue for VIF port">
+      <column name="queue_ids">
+        <p>
+          This column indicates id numbers for queues in this VIF port. 
+          Each queue id in this column correspondes to a source port in 
+          <ref column="queue_source_ports"/> column and a minnimum value in 
+          <ref column="queue_min_value"/> column from northbound database.
+        </p>
+      </column>
+      <column name="queue_source_ports">
+        <p>
+          This column uses to specific name of VIF port which traffic come from to 
+          queues.
+        </p>
+      </column>
+      <column name="queue_min_value">
+        <p>
+          This column indicates the minimum guaranteed rate available for data sent 
+          from this VIF, in bit/s. Each value in this column correspondes to a value
+          in <ref column="queue_source_ports"/> column.
+        </p>
+      </column>
+    </group>
+
     <group title="Distributed Gateway Port Options">
       <p>
         These options apply to the distributed parent ports of logical ports

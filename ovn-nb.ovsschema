@@ -1,7 +1,7 @@
 {
     "name": "OVN_Northbound",
     "version": "7.0.4",
-    "cksum": "1676649201 33795",
+    "cksum": "3426251445 34142",
     "tables": {
         "NB_Global": {
             "columns": {
@@ -100,6 +100,12 @@
                               "value": "string",
                               "min": 0,
                               "max": "unlimited"}},
+                "queue_source_ports": {"type": {"key": "string",
+                                       "min": 0,
+                                       "max": "unlimited"}},
+                "queue_min_value": {"type": {"key": "string",
+                                       "min": 0,
+                                       "max": "unlimited"}},
                 "parent_name": {"type": {"key": "string", "min": 0, "max": 1}},
                 "tag_request": {
                      "type": {"key": {"type": "integer",
