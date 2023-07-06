@@ -372,6 +372,7 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                     ovsrec_port_set_qos(port, NULL);
                 }
                 ovsrec_qos_delete(qos);
+                return;
             }
         }
     }
