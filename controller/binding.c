@@ -149,33 +149,30 @@ struct qos_queue {
 
     char *network;
     char *port;
-    char *source_port; //+++ Hai
-    
+
+    char *match;
     uint32_t queue_id;
     unsigned long long min_rate;
     unsigned long long max_rate;
     unsigned long long burst;
 };
 
-//+++ Hai
 static struct qos_queue *
-find_qos_queue(struct hmap *queue_map, uint32_t hash, const char *port, const char *source_port)
+find_qos_queue(struct hmap *queue_map, uint32_t hash, const char *port)
 {
     struct qos_queue *q;
     HMAP_FOR_EACH_WITH_HASH (q, node, hash, queue_map) {
-        if ((!strcmp(q->port, port) && (!strcmp(q->source_port, source_port) || (NULL == source_port)))) {
+        if (!strcmp(q->port, port)) {
             return q;
         }
     }
     return NULL;
 }
-//--- Hai
 
 static void
 qos_queue_erase_entry(struct qos_queue *q)
 {
-    free(q->source_port);
-    free(q->network);//+++ Hai
+    free(q->network);
     free(q->port);
     free(q);
 }
@@ -190,37 +187,41 @@ destroy_qos_map(struct hmap *qos_map)
     hmap_destroy(qos_map);
 }
 
-//+++ Hai
-static void get_vif_port_from_iface(const struct binding_ctx_in *b_ctx_in,
-                                    const struct ovsrec_port **pport,
-                                    const struct ovsrec_interface *iface)
+static const struct ovsrec_interface *
+get_qos_egress_port_interface(struct shash *bridge_mappings,
+                              const struct ovsrec_port **pport,
+                              const char *network)
 {
-    int i;
-    const char *iface_id_2 = smap_get(&iface->external_ids, "iface-id"); 
-    if (iface_id_2) {
-        for (i = 0; i < b_ctx_in->br_int->n_ports; i++) {
-            const struct ovsrec_port *port_rec = b_ctx_in->br_int->ports[i];
-            const char *iface_id_1;
-            int j;
+    struct ovsrec_bridge *br_ln = shash_find_data(bridge_mappings, network);
+    if (!br_ln) {
+        return NULL;
+    }
 
-            for (j = 0; j < port_rec->n_interfaces; j++) {
-                const struct ovsrec_interface *iface_rec;
-                iface_rec = port_rec->interfaces[j];
-                iface_id_1 = smap_get(&iface_rec->external_ids, "iface-id");
-                // VLOG_INFO("ovs iface-id %s", iface_id_1);
-                if (iface_id_1 && !strcmp(iface_id_1,iface_id_2) ) {
-                    // VLOG_INFO("found ovs port");
-                    *pport = port_rec;
-                    return;
-                }
+    /* Add egress-ifaces from the connected bridge */
+    for (size_t i = 0; i < br_ln->n_ports; i++) {
+        const struct ovsrec_port *port = br_ln->ports[i];
+        for (size_t j = 0; j < port->n_interfaces; j++) {
+            const struct ovsrec_interface *iface = port->interfaces[j];
+
+            if (smap_get(&iface->external_ids, "iface-id")) {
+                continue;
+            }
+
+            if (smap_get_bool(&iface->external_ids,
+                              "ovn-egress-iface", false) ||
+                !strcmp(iface->type, "")) {
+                *pport = port;
+                return iface;
             }
         }
     }
+
+    return NULL;
 }
-//--- End Hai
+
 
 static const struct ovsrec_interface *
-get_qos_egress_port_interface(struct shash *bridge_mappings,
+get_qos_egress_port_interface_mod(struct shash *bridge_mappings,
                               const struct ovsrec_port **pport,
                               const char *network)
 {
@@ -258,27 +259,27 @@ get_qos_egress_port_interface(struct shash *bridge_mappings,
  * can be unrecognized for certain NICs or reported too low for virtual
  * interfaces. */
 #define OVN_QOS_MAX_RATE    34359738360ULL
-//+++ Hai
 static void
 add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                         const struct ovsrec_port *port,
                         unsigned long long min_rate,
                         unsigned long long max_rate,
                         unsigned long long burst,
-                        uint32_t queue_id, 
-                        const char *ovn_port, const char *source_port)
+                        uint32_t queue_id, const char *ovn_port)
 {
     struct smap external_ids = SMAP_INITIALIZER(&external_ids);
     struct smap other_config = SMAP_INITIALIZER(&other_config);
 
+    
+
     const struct ovsrec_qos *qos = port->qos;
     if (qos && !smap_get_bool(&qos->external_ids, "ovn_qos", false)) {
         /* External configured QoS, do not overwrite it. */
+        // VLOG_INFO("External QoS...............");
         return;
     }
 
     if (!qos) {
-        VLOG_INFO("Khong co qos");
         qos = ovsrec_qos_insert(ovs_idl_txn);
         ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
         ovsrec_port_set_qos(port, qos);
@@ -297,8 +298,7 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
         queue = qos->value_queues[i];
 
         const char *p = smap_get(&queue->external_ids, "ovn_port");
-        const char *sp = smap_get(&queue->external_ids, "source_port");
-        if ((NULL != source_port) && p && (!strcmp(p, ovn_port) && !strcmp(sp, source_port))) {
+        if (p && !strcmp(p, ovn_port)) {
             break;
         }
     }
@@ -315,16 +315,14 @@ add_ovs_qos_table_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     ovsrec_queue_set_other_config(queue, &other_config);
     smap_destroy(&other_config);
 
+    VLOG_INFO("Queue Implemet....");
+
     smap_add(&external_ids, "ovn_port", ovn_port);
-    if (NULL != source_port)
-        smap_add(&external_ids, "source_port", source_port);
     ovsrec_queue_verify_external_ids(queue);
     ovsrec_queue_set_external_ids(queue, &external_ids);
     smap_destroy(&external_ids);
 }
-//--- Hai
 
-//+++ Hai
 static void
 remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
                        const struct sbrec_port_binding *pb,
@@ -335,59 +333,52 @@ remove_stale_qos_entry(struct ovsdb_idl_txn *ovs_idl_txn,
     if (!ovs_idl_txn) {
         return;
     }
-    bool qos_found = false;
-    const struct ovsrec_qos *qos;
-    OVSREC_QOS_TABLE_FOR_EACH (qos, qos_table) {
-        for (int j = 0; j < pb->n_queue_ids; j++) {
-            struct qos_queue *q = find_qos_queue(
-                    queue_map, hash_string(pb->logical_port, pb->queue_ids[j]),
-                    pb->logical_port,pb->queue_source_ports[j]);
-            if (!q) {
-                continue;
-            } 
-            for (size_t i = 0; i < qos->n_queues; i++) {
-                struct ovsrec_queue *queue = qos->value_queues[i];
-                if (!queue) {
-                    continue;
-                }
 
-                const char *ovn_port = smap_get(
-                        &queue->external_ids, "ovn_port");
-                const char *source_port = smap_get(
-                        &queue->external_ids,"source_port");
-
-                if (!ovn_port || (strcmp(ovn_port, q->port) || strcmp(source_port, pb->queue_source_ports[j]))) {
-                    continue;
-                }
-                qos_found = true;
-                ovsrec_qos_update_queues_delkey(qos, qos->key_queues[i]);
-                ovsrec_queue_delete(queue);
-
-                hmap_remove(queue_map, &q->node);
-                qos_queue_erase_entry(q);
-
-            }
-        }
-
-        if (qos_found) {
-            const struct ovsrec_port *port =
-                ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
-            if (port) {
-                ovsrec_port_set_qos(port, NULL);
-            }
-            ovsrec_qos_delete(qos);
-        }
+    struct qos_queue *q = find_qos_queue(
+            queue_map, hash_string(pb->logical_port, 0),
+            pb->logical_port);
+    if (!q) {
         return;
     }
-}
-//--- Hai
 
-//+++ Hai
+    const struct ovsrec_qos *qos;
+    OVSREC_QOS_TABLE_FOR_EACH (qos, qos_table) {
+        for (size_t i = 0; i < qos->n_queues; i++) {
+            struct ovsrec_queue *queue = qos->value_queues[i];
+            if (!queue) {
+                continue;
+            }
+
+            const char *ovn_port = smap_get(
+                    &queue->external_ids, "ovn_port");
+            if (!ovn_port || strcmp(ovn_port, q->port)) {
+                continue;
+            }
+
+            ovsrec_qos_update_queues_delkey(qos, qos->key_queues[i]);
+            ovsrec_queue_delete(queue);
+
+            if (qos->n_queues == 1) {
+                const struct ovsrec_port *port =
+                    ovsport_lookup_by_qos(ovsrec_port_by_qos, qos);
+                if (port) {
+                    ovsrec_port_set_qos(port, NULL);
+                }
+                ovsrec_qos_delete(qos);
+            }
+
+            hmap_remove(queue_map, &q->node);
+            qos_queue_erase_entry(q);
+
+            return;
+        }
+    }
+}
+
 static void
 configure_qos(const struct sbrec_port_binding *pb,
               struct binding_ctx_in *b_ctx_in,
-              struct binding_ctx_out *b_ctx_out,
-              const struct ovsrec_interface *vif_iface)
+              struct binding_ctx_out *b_ctx_out)
 {
     unsigned long long min_rate = smap_get_ullong(
             &pb->options, "qos_min_rate", 0);
@@ -397,7 +388,7 @@ configure_qos(const struct sbrec_port_binding *pb,
             &pb->options, "qos_burst", 0);
     uint32_t queue_id = smap_get_int(&pb->options, "qdisc_queue_id", 0);
 
-    if (((!min_rate && !max_rate && !burst) || !queue_id) && (0 == pb->n_queue_ids)) {
+    if ((!min_rate && !max_rate && !burst) || !queue_id) {
         /* Qos is not configured for this port. */
         remove_stale_qos_entry(b_ctx_in->ovs_idl_txn, pb,
                                b_ctx_in->ovsrec_port_by_qos,
@@ -405,48 +396,15 @@ configure_qos(const struct sbrec_port_binding *pb,
         return;
     }
 
-    // Add multi queue for ovn port
-    if ( pb->n_queue_ids > 0) {
-        for (int i = 0; i < pb->n_queue_ids; i++) {
-            // VLOG_INFO("Into set queue func");
-            unsigned long long min;
-            str_to_ullong(pb->queue_min_value[i],10,&min);
-            uint32_t hash_temp = hash_string(pb->logical_port, pb->queue_ids[i]);
-            struct qos_queue *temp = find_qos_queue(b_ctx_out->qos_map, hash_temp,
-                                                pb->logical_port,pb->queue_source_ports[i]);
-            if (!temp || temp->min_rate != min) {
-                const struct ovsrec_port *temp_port =   NULL;
-
-                enum en_lport_type type = get_lport_type(pb);
-                if (LP_VIF == type && vif_iface != NULL) {     
-                    get_vif_port_from_iface(b_ctx_in,&temp_port,vif_iface);
-                    /* Add new QoS entries. */
-                    add_ovs_qos_table_entry(b_ctx_in->ovs_idl_txn, temp_port, min,
-                                            max_rate, burst, pb->queue_ids[i],
-                                            pb->logical_port,pb->queue_source_ports[i]);
-                    // VLOG_INFO("end add ovs qos table");
-                    if (!temp) {
-                        temp = xzalloc(sizeof *temp);
-                        hmap_insert(b_ctx_out->qos_map, &temp->node, hash_temp);
-                        temp->port = xstrdup(pb->logical_port);
-                        temp->source_port = xstrdup(pb->queue_source_ports[i]);
-                        temp->queue_id = pb->queue_ids[i];
-                    }
-
-                    temp->network = NULL;
-                    temp->min_rate = min;
-                    temp->max_rate = max_rate;
-                    temp->burst = burst;
-                }
-            }
-        }
-    return;
-    }
+    VLOG_INFO("MIM:%llu  MAX:%llu BST:%llu queue:%u lport:%s" ,
+    min_rate,max_rate,burst,queue_id,pb->logical_port);
 
     const char *network = smap_get(&pb->options, "qos_physical_network");
+
+    VLOG_INFO("net:%s",network);
     uint32_t hash = hash_string(pb->logical_port, 0);
     struct qos_queue *q = find_qos_queue(b_ctx_out->qos_map, hash,
-                                         pb->logical_port,NULL);
+                                         pb->logical_port);
     if (!q || q->min_rate != min_rate || q->max_rate != max_rate ||
         q->burst != burst) {
         struct shash bridge_mappings = SHASH_INITIALIZER(&bridge_mappings);
@@ -463,7 +421,48 @@ configure_qos(const struct sbrec_port_binding *pb,
             /* Add new QoS entries. */
             add_ovs_qos_table_entry(b_ctx_in->ovs_idl_txn, port, min_rate,
                                     max_rate, burst, queue_id,
-                                    pb->logical_port,NULL);
+                                    pb->logical_port);
+        }
+        else{
+            // iface = get_qos_egress_port_interface_mod(&bridge_mappings, &port,
+                                                //    network);
+
+
+            int i;
+            for (i = 0; i < b_ctx_in->br_int->n_ports; i++) {
+                const struct ovsrec_port *port_rec = b_ctx_in->br_int->ports[i];
+                const char *iface_id;
+                int j;
+                bool qos_install = false;
+
+                if (!strcmp(port_rec->name, b_ctx_in->br_int->name)) {
+                    continue;
+                }
+                
+                for (j = 0; j < port_rec->n_interfaces; j++) {
+                    const struct ovsrec_interface *iface_rec;
+
+                    iface_rec = port_rec->interfaces[j];
+                    iface_id = smap_get(&iface_rec->external_ids, "iface-id");
+                    int64_t ofport = iface_rec->n_ofport ? *iface_rec->ofport : 0;
+                    int64_t linkspeed = iface_rec->n_link_speed ? *iface_rec->link_speed : 0;
+                    if (iface_id && ofport > 0 && !strcmp(iface_id,pb->logical_port)) {
+                        VLOG_INFO("Install qos... link speed: %"PRId64 "\n",linkspeed);
+
+                        // VLOG_INFO("Install qos... link speed: %"PRId64 "\n",*iface_rec->link_speed);
+                        add_ovs_qos_table_entry(b_ctx_in->ovs_idl_txn, port_rec, min_rate,
+                                    max_rate, burst, queue_id,
+                                    pb->logical_port);
+                        qos_install = true;
+                        break;
+                    }
+                }
+                if(qos_install==true){
+                    break;
+                }
+            }
+                        
+            // add qos
         }
         shash_destroy(&bridge_mappings);
     }
@@ -481,18 +480,224 @@ configure_qos(const struct sbrec_port_binding *pb,
     q->max_rate = max_rate;
     q->burst = burst;
 }
-//--- Hai
+
+/* 34359738360 == (2^32 - 1) * 8.  netdev_set_qos() doesn't support
+ * 64-bit rate netlink attributes, so the maximum value is 2^32 - 1
+ * bytes. The 'max-rate' config option is in bits, so multiplying by 8.
+ * Without setting max-rate the reported link speed will be used, which
+ * can be unrecognized for certain NICs or reported too low for virtual
+ * interfaces. */
+#define OVN_QOS_MAX_RATE    34359738360ULL
+static void
+add_ovs_qos_table_entry_queue(struct ovsdb_idl_txn *ovs_idl_txn,
+                        const struct ovsrec_port *port,
+                        unsigned long long min_rate,
+                        unsigned long long max_rate,
+                        unsigned long long burst,
+                        uint32_t queue_id, const char *ovn_port,
+                        const char *match)
+{
+    struct smap external_ids = SMAP_INITIALIZER(&external_ids);
+    struct smap other_config = SMAP_INITIALIZER(&other_config);
+
+    
+
+    const struct ovsrec_qos *qos = port->qos;
+    if (qos && !smap_get_bool(&qos->external_ids, "ovn_qos", false)) {
+        /* External configured QoS, do not overwrite it. */
+        // VLOG_INFO("External QoS...............");
+        return;
+    }
+
+    if (!qos) {
+        qos = ovsrec_qos_insert(ovs_idl_txn);
+        ovsrec_qos_set_type(qos, OVN_QOS_TYPE);
+        ovsrec_port_set_qos(port, qos);
+        if (max_rate > 20000){
+            smap_add_format(&other_config, "max-rate", "%lld", max_rate);
+        }else{
+            smap_add_format(&other_config, "max-rate", "%lld", OVN_QOS_MAX_RATE);
+        }
+        ovsrec_qos_set_other_config(qos, &other_config);
+        smap_clear(&other_config);
+
+        smap_add(&external_ids, "ovn_qos", "true");
+        ovsrec_qos_set_external_ids(qos, &external_ids);
+        smap_clear(&external_ids);
+    }
+
+    unsigned long long curr_max_rate = 0;
+    bool new_def_rate = false;
+    struct ovsrec_queue *queue;
+    size_t i;
+    for (i = 0; i < qos->n_queues; i++) {
+        queue = qos->value_queues[i];
+         unsigned long long loop_max_rate = smap_get_ullong(
+            &queue->other_config, "max-rate", 0);
+        if(curr_max_rate < loop_max_rate){
+            curr_max_rate = loop_max_rate;
+            new_def_rate = true;
+        }
+       
+
+        const char *p = smap_get(&queue->external_ids, "ovn_port");
+        if (p && !strcmp(p, ovn_port)) {
+            break;
+        }
+    }
+
+    if(new_def_rate){
+        smap_add_format(&other_config, "max-rate", "%lld", curr_max_rate);
+        ovsrec_qos_set_other_config(qos, &other_config);
+        smap_clear(&other_config);
+
+        smap_add(&external_ids, "ovn_qos", "true");
+        ovsrec_qos_set_external_ids(qos, &external_ids);
+        smap_clear(&external_ids);
+    }
+
+    if (i == qos->n_queues) {
+        queue = ovsrec_queue_insert(ovs_idl_txn);
+        ovsrec_qos_update_queues_setkey(qos, queue_id, queue);
+    }
+
+    smap_add_format(&other_config, "max-rate", "%llu", max_rate);
+    smap_add_format(&other_config, "min-rate", "%llu", min_rate);
+    smap_add_format(&other_config, "burst", "%llu", burst);
+    smap_add_format(&other_config, "match", "%s", match);
+    ovsrec_queue_verify_other_config(queue);
+    ovsrec_queue_set_other_config(queue, &other_config);
+    smap_destroy(&other_config);
+
+    VLOG_INFO("Queue Implemet....");
+
+    smap_add(&external_ids, "ovn_port", ovn_port);
+    ovsrec_queue_verify_external_ids(queue);
+    ovsrec_queue_set_external_ids(queue, &external_ids);
+    smap_destroy(&external_ids);
+}
+
+
+static void
+configure_queue_rule(const struct sbrec_port_binding *pb,
+              struct binding_ctx_in *b_ctx_in,
+              struct binding_ctx_out *b_ctx_out)
+{   const struct sbrec_queue *queue;
+    for (size_t k = 0; k < pb->n_queue_rules; k++) { 
+        queue = pb->queue_rules[k];
+
+        int64_t min_rate = queue->value_bandwidth_min[0];
+        int64_t max_rate = queue->value_bandwidth_max[0];
+        int64_t  burst = queue->value_bandwidth_max[1];
+
+        int64_t queue_id = queue->id_queue;
+        char *match = queue->match;
+
+        if ((!min_rate && !max_rate && !burst) || !queue_id) {
+            /* Qos is not configured for this port. */
+            remove_stale_qos_entry(b_ctx_in->ovs_idl_txn, pb,
+                                b_ctx_in->ovsrec_port_by_qos,
+                                b_ctx_in->qos_table, b_ctx_out->qos_map);
+            return;
+        }
+
+        VLOG_INFO("MIM:'%"PRId64"' MAX:'%"PRId64"' BST:'%"PRId64"' queue:'%"PRId64"' lport:%s" ,
+        min_rate,max_rate,burst,queue_id,pb->logical_port);
+
+        const char *network = smap_get(&pb->options, "qos_physical_network");
+
+        uint32_t hash = hash_string(pb->logical_port, 0);
+        struct qos_queue *q = find_qos_queue(b_ctx_out->qos_map, hash,
+                                            pb->logical_port);
+        if (!q || q->min_rate != min_rate || q->max_rate != max_rate ||
+            q->burst != burst || q->match != match) {
+            struct shash bridge_mappings = SHASH_INITIALIZER(&bridge_mappings);
+            add_ovs_bridge_mappings(b_ctx_in->ovs_table, b_ctx_in->bridge_table,
+                                    &bridge_mappings);
+
+            const struct ovsrec_port *port = NULL;
+            const struct ovsrec_interface *iface = NULL;
+            if (network) {
+                iface = get_qos_egress_port_interface(&bridge_mappings, &port,
+                                                    network);
+            }
+            if (iface) {
+                /* Add new QoS entries. */
+                add_ovs_qos_table_entry(b_ctx_in->ovs_idl_txn, port, min_rate,
+                                        max_rate, burst, queue_id,
+                                        pb->logical_port);
+            }
+            else{
+                // iface = get_qos_egress_port_interface_mod(&bridge_mappings, &port,
+                                                    //    network);
+
+
+                int i;
+                for (i = 0; i < b_ctx_in->br_int->n_ports; i++) {
+                    const struct ovsrec_port *port_rec = b_ctx_in->br_int->ports[i];
+                    const char *iface_id;
+                    int j;
+                    bool qos_install = false;
+
+                    if (!strcmp(port_rec->name, b_ctx_in->br_int->name)) {
+                        continue;
+                    }
+                    
+                    for (j = 0; j < port_rec->n_interfaces; j++) {
+                        const struct ovsrec_interface *iface_rec;
+
+                        iface_rec = port_rec->interfaces[j];
+                        iface_id = smap_get(&iface_rec->external_ids, "iface-id");
+                        int64_t ofport = iface_rec->n_ofport ? *iface_rec->ofport : 0;
+                        int64_t linkspeed = iface_rec->n_link_speed ? *iface_rec->link_speed : 0;
+                        if (iface_id && ofport > 0 && !strcmp(iface_id,pb->logical_port)) {
+                            VLOG_INFO("Install qos... link speed: %"PRId64 "\n",linkspeed);
+
+                            // VLOG_INFO("Install qos... link speed: %"PRId64 "\n",*iface_rec->link_speed);
+                            add_ovs_qos_table_entry_queue(b_ctx_in->ovs_idl_txn, port_rec, min_rate,
+                                        max_rate, burst, queue_id,
+                                        pb->logical_port,match);
+                            qos_install = true;
+                            break;
+                        }
+                    }
+                    if(qos_install==true){
+                        break;
+                    }
+                }
+                            
+                // add qos
+            }
+            shash_destroy(&bridge_mappings);
+        }
+
+        if (!q) {
+            q = xzalloc(sizeof *q);
+            hmap_insert(b_ctx_out->qos_map, &q->node, hash);
+            q->port = xstrdup(pb->logical_port);
+            q->queue_id = queue_id;
+        }
+
+        free(q->network);
+        q->network = network ? xstrdup(network) : NULL;
+        q->min_rate = min_rate;
+        q->max_rate = max_rate;
+        q->match = match;
+        q->burst = burst;
+    }
+    
+}
 
 static void
 ovs_qos_entries_gc(struct ovsdb_idl_txn *ovs_idl_txn,
                    struct ovsdb_idl_index *ovsrec_port_by_qos,
                    const struct ovsrec_qos_table *qos_table,
-                   struct hmap *queue_map,
-                   const struct sbrec_port_binding *pb)
+                   struct hmap *queue_map)
 {
     if (!ovs_idl_txn) {
         return;
     }
+
     const struct ovsrec_qos *qos, *qos_next;
     OVSREC_QOS_TABLE_FOR_EACH_SAFE (qos, qos_next, qos_table) {
         int n_queue_deleted = 0, n_queues = qos->n_queues;
@@ -503,13 +708,12 @@ ovs_qos_entries_gc(struct ovsdb_idl_txn *ovs_idl_txn,
             }
 
             const char *port = smap_get(&queue->external_ids, "ovn_port");
-            const char *src_port = smap_get(&queue->external_ids, "source_port"); //+++ Hai
-            if (!port && !src_port) {
+            if (!port) {
                 continue;
             }
 
             struct qos_queue *q = find_qos_queue(queue_map,
-                                                 hash_string(port, pb->queue_ids[i]), port,src_port);
+                                                 hash_string(port, 0), port);
             if (!q) {
                 ovsrec_qos_update_queues_delkey(qos, qos->key_queues[i]);
                 ovsrec_queue_delete(queue);
@@ -1660,7 +1864,8 @@ consider_vif_lport_(const struct sbrec_port_binding *pb,
                                            b_ctx_out->tracked_dp_bindings);
             }
             if (b_lport->lbinding->iface && b_ctx_in->ovs_idl_txn) {
-                configure_qos(pb, b_ctx_in, b_ctx_out,b_lport->lbinding->iface);
+                configure_qos(pb, b_ctx_in, b_ctx_out);
+                configure_queue_rule(pb, b_ctx_in, b_ctx_out);
             }
         } else {
             /* We could, but can't claim the lport. */
@@ -1986,7 +2191,7 @@ consider_localnet_lport(const struct sbrec_port_binding *pb,
     update_local_lports(pb->logical_port, b_ctx_out);
 
     if (b_ctx_in->ovs_idl_txn) {
-        configure_qos(pb, b_ctx_in, b_ctx_out,NULL);
+        configure_qos(pb, b_ctx_in, b_ctx_out);
     }
 
     update_related_lport(pb, b_ctx_out);
@@ -2253,7 +2458,7 @@ binding_run(struct binding_ctx_in *b_ctx_in, struct binding_ctx_out *b_ctx_out)
     shash_destroy(&bridge_mappings);
     /* Remove stale QoS entries. */
     ovs_qos_entries_gc(b_ctx_in->ovs_idl_txn, b_ctx_in->ovsrec_port_by_qos,
-                       b_ctx_in->qos_table, b_ctx_out->qos_map,pb);
+                       b_ctx_in->qos_table, b_ctx_out->qos_map);
 
     cleanup_claimed_port_timestamps();
 }

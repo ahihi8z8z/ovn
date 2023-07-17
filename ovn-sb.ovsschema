@@ -1,7 +1,7 @@
 {
     "name": "OVN_Southbound",
     "version": "20.27.4",
-    "cksum": "3979817969 31137",
+    "cksum": "3194181501 30531",
     "tables": {
         "SB_Global": {
             "columns": {
@@ -219,6 +219,11 @@
                               "value": "string",
                               "min": 0,
                               "max": "unlimited"}},
+                "queue_rules": {"type": {"key": {"type": "uuid",
+                                        "refTable": "Queue",
+                                        "refType": "strong"},
+                                "min": 0,
+                                "max": "unlimited"}},
                 "datapath": {"type": {"key": {"type": "uuid",
                                               "refTable": "Datapath_Binding"}}},
                 "tunnel_key": {
@@ -257,17 +262,6 @@
                 "mac": {"type": {"key": "string",
                                  "min": 0,
                                  "max": "unlimited"}},
-                "queue_ids": {
-                     "type": {"key": {"type": "integer",
-                                      "minInteger": 1,
-                                      "maxInteger": 65535},
-                              "min": 0, "max": 65535}},
-                "queue_source_ports": {"type": {"key": "string",
-                                       "min": 0,
-                                       "max": "unlimited"}},
-                "queue_min_value": {"type": {"key": "string",
-                                       "min": 0,
-                                       "max": "unlimited"}},
                 "port_security": {"type": {"key": "string",
                                  "min": 0,
                                  "max": "unlimited"}},
@@ -289,6 +283,39 @@
                                                        "refType": "weak"},
                                                "min": 0, "max": "unlimited"}}},
             "indexes": [["datapath", "tunnel_key"], ["logical_port"]],
+            "isRoot": true},
+        "Queue": {
+            "columns": {
+                "priority": {"type": {"key": {"type": "integer",
+                                              "minInteger": 0,
+                                              "maxInteger": 32767}}},
+                "direction": {"type": {"key": {"type": "string",
+                                            "enum": ["set", ["from-lport", "to-lport"]]}}},
+                "match": {"type": "string"},
+                "action": {"type": {"key": {"type": "string",
+                                            "enum": ["set", ["dscp"]]},
+                                    "value": {"type": "integer",
+                                              "minInteger": 0,
+                                              "maxInteger": 63},
+                                    "min": 0, "max": "unlimited"}},
+                "bandwidth_max": {"type": {"key": {"type": "string",
+                                               "enum": ["set", ["rate",
+                                                                "burst"]]},
+                                       "value": {"type": "integer",
+                                                 "minInteger": 1,
+                                                 "maxInteger": 4294967295},
+                                       "min": 0, "max": "unlimited"}},
+                "bandwidth_min": {"type": {"key": {"type": "string",
+                                               "enum": ["set", ["min"
+                                                                ]]},
+                                       "value": {"type": "integer",
+                                                 "minInteger": 1,
+                                                 "maxInteger": 4294967295},
+                                       "min": 0, "max": "unlimited"}},
+                "id_queue": {"type": "integer"},
+                "external_ids": {
+                    "type": {"key": "string", "value": "string",
+                             "min": 0, "max": "unlimited"}}},
             "isRoot": true},
         "MAC_Binding": {
             "columns": {
