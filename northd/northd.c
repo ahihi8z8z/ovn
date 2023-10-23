@@ -7937,17 +7937,6 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
         
         if (min || rate){
             
-            // uint32_t queue_id = smap_get_int(
-            //         &op->sb->queue_rules, "qdisc_queue_id", 0);
-            // bool has_qos = port_has_qos_params(&op->nbsp->options);
-            // struct smap options;
-            
-            
-           
-            // bool has_qos = port_has_qos_params(&op->nbsp->options);
-            // struct smap options;
-        
-
             if (rate) {
                 stage = ingress ? S_SWITCH_IN_QOS_METER : S_SWITCH_OUT_QOS_METER;
                 ds_clear(&action);
