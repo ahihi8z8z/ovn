@@ -7891,7 +7891,7 @@ build_acls(struct ovn_datapath *od, const struct chassis_features *features,
     ds_destroy(&actions);
 }
 
-
+// Hai checking
 static void
 build_queue(struct ovn_port *op, struct hmap *lflows) {
     struct ds action = DS_EMPTY_INITIALIZER;
@@ -7925,9 +7925,16 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
                 min = queue->value_bandwidth_min[n];
             } 
         }
-        
 
-        
+    // Hai mod. Change ip id of packet   
+    ds_clear(&action);
+    ds_put_format(&action, "ip.id = %"PRId64"; next;",
+                    queue->id_queue);
+    ovn_lflow_add_with_hint(lflows, od, stage,
+                            queue->priority,
+                            queue->match, ds_cstr(&action),
+                            &queue->header_);
+   
 
         for (size_t n = 0; n < queue->n_bandwidth_max; n++) {
             if (!strcmp(queue->key_bandwidth_max[n], "rate")) {

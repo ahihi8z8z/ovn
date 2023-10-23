@@ -219,6 +219,7 @@ ovn_init_symtab(struct shash *symtab)
     expr_symtab_add_field(symtab, "ip.dscp", MFF_IP_DSCP_SHIFTED, "ip", false);
     expr_symtab_add_field(symtab, "ip.ecn", MFF_IP_ECN, "ip", false);
     expr_symtab_add_field(symtab, "ip.ttl", MFF_IP_TTL, "ip", false);
+    expr_symtab_add_field(symtab, "ip.id", MFF_IP_ID, "ip", false); // Hai mod
 
     expr_symtab_add_field(symtab, "ip4.src", MFF_IPV4_SRC, "ip4", false);
     expr_symtab_add_field(symtab, "ip4.dst", MFF_IPV4_DST, "ip4", false);
