@@ -55,6 +55,7 @@ struct collector_set_ids;
  * ovn_get_internal_version() in lib/ovn-util.c.  If any OVNACT is updated,
  * increment the OVN_INTERNAL_MINOR_VER macro in lib/ovn-util.c.
  */
+// Hai mod. SET_IP_ID
 #define OVNACTS                                       \
     OVNACT(OUTPUT,            ovnact_null)            \
     OVNACT(NEXT,              ovnact_next)            \
@@ -126,7 +127,7 @@ struct collector_set_ids;
     OVNACT(COMMIT_LB_AFF,     ovnact_commit_lb_aff)   \
     OVNACT(CHK_LB_AFF,        ovnact_result)          \
     OVNACT(SAMPLE,            ovnact_sample)          \
-
+    OVNACT(SET_IP_ID,         ovnact_set_ip_id)       \
 /* enum ovnact_type, with a member OVNACT_<ENUM> for each action. */
 enum OVS_PACKED_ENUM ovnact_type {
 #define OVNACT(ENUM, STRUCT) OVNACT_##ENUM,
@@ -397,6 +398,12 @@ struct ovnact_put_opts {
 struct ovnact_set_queue {
     struct ovnact ovnact;
     uint16_t queue_id;
+};
+
+/* Hai mod. OVNACT_SET_IP_ID. */
+struct ovnact_set_ip_id {
+    struct ovnact ovnact;
+    ovs_be16 nw_id;
 };
 
 /* OVNACT_DNS_LOOKUP, OVNACT_CHK_LB_HAIRPIN, OVNACT_CHK_LB_HAIRPIN_REPLY. */

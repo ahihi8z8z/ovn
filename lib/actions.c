@@ -3085,6 +3085,41 @@ ovnact_set_queue_free(struct ovnact_set_queue *a OVS_UNUSED)
 {
 }
 
+// Hai mod.
+static void
+parse_SET_IP_ID(struct action_context *ctx)
+{
+    int nw_id;
+
+    if (!lexer_force_match(ctx->lexer, LEX_T_LPAREN)
+        || !lexer_get_int(ctx->lexer, &nw_id)
+        || !lexer_force_match(ctx->lexer, LEX_T_RPAREN)) {
+        return;
+    }
+
+    ovnact_put_SET_IP_ID(ctx->ovnacts)->nw_id = nw_id;
+}
+
+static void
+format_SET_IP_ID(const struct ovnact_set_ip_id *set_ip_id, struct ds *s)
+{
+    ds_put_format(s, "set_ip_id(%d);", set_ip_id->nw_id);
+}
+
+static void
+encode_SET_IP_ID(const struct ovnact_set_ip_id *set_ip_id,
+                 const struct ovnact_encode_params *ep OVS_UNUSED,
+                 struct ofpbuf *ofpacts)
+{
+    ofpact_put_SET_IP_ID(ofpacts)->nw_id = set_ip_id->nw_id;
+}
+
+static void
+ovnact_set_nw_ip_free(struct ovnact_set_ip_id *a OVS_UNUSED)
+{
+}
+// Hai end mod.
+
 static void
 parse_ovnact_result(struct action_context *ctx, const char *name,
                     const char *prereq, const struct expr_field *dst,

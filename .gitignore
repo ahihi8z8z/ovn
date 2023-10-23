@@ -95,3 +95,4 @@ testsuite.tmp.orig
 /.vscode/
 /cxx-check
 /*.ovsschema.stamp
+/ovs
