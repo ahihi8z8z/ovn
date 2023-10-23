@@ -3115,7 +3115,7 @@ encode_SET_IP_ID(const struct ovnact_set_ip_id *set_ip_id,
 }
 
 static void
-ovnact_set_nw_ip_free(struct ovnact_set_ip_id *a OVS_UNUSED)
+ovnact_set_ip_id_free(struct ovnact_set_ip_id *a OVS_UNUSED)
 {
 }
 // Hai end mod.
@@ -5436,6 +5436,8 @@ parse_action(struct action_context *ctx)
         parse_put_mac_bind(ctx, 128, ovnact_put_PUT_ND(ctx->ovnacts));
     } else if (lexer_match_id(ctx->lexer, "set_queue")) {
         parse_SET_QUEUE(ctx);
+    } else if (lexer_match_id(ctx->lexer, "set_ip_id")) { // Hai mod
+        parse_SET_IP_ID(ctx);
     } else if (lexer_match_id(ctx->lexer, "log")) {
         parse_LOG(ctx);
     } else if (lexer_match_id(ctx->lexer, "set_meter")) {
