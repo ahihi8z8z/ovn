@@ -7928,8 +7928,8 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
 
     // Hai mod. Change ip id of packet   
     ds_clear(&action);
-    ds_put_format(&action, "ip.id = %"PRId64"; next;",
-                    queue->id_queue);
+    ds_put_format(&action, "ip.id = %"PRId16"; next;",
+                    (uint16_t)(queue->id_queue));
     ovn_lflow_add_with_hint(lflows, od, stage,
                             queue->priority,
                             queue->match, ds_cstr(&action),
