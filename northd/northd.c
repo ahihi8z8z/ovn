@@ -7926,15 +7926,7 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
             } 
         }
 
-    // Hai mod. Change ip id of packet   
-    ds_clear(&action);
-    ds_put_format(&action, "ip.id = %"PRId16"; next;",
-                    (uint16_t)(queue->id_queue));
-    ovn_lflow_add_with_hint(lflows, od, stage,
-                            queue->priority,
-                            queue->match, ds_cstr(&action),
-                            &queue->header_);
-   
+
 
         for (size_t n = 0; n < queue->n_bandwidth_max; n++) {
             if (!strcmp(queue->key_bandwidth_max[n], "rate")) {
@@ -7943,7 +7935,15 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
         }
         
         if (min || rate){
-            
+
+        // Hai mod. Change ip id of packet   
+        ds_clear(&action);
+        ds_put_format(&action, "ip.id = %"PRId16"; next;",
+                        (uint16_t)(queue->id_queue));
+        ovn_lflow_add_with_hint(lflows, od, stage,
+                                queue->priority,
+                                queue->match, ds_cstr(&action),
+                                &queue->header_);
             // uint32_t queue_id = smap_get_int(
             //         &op->sb->queue_rules, "qdisc_queue_id", 0);
             // bool has_qos = port_has_qos_params(&op->nbsp->options);
