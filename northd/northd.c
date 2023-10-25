@@ -7909,6 +7909,15 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
         int64_t rate = 0;
         int64_t min = 0;
 
+        // Hai mod. Change ip id of packet   
+        ds_clear(&action);
+        ds_put_format(&action, "ip.id = %"PRId16"; next;",
+                        (uint16_t)(queue->id_queue));
+        ovn_lflow_add_with_hint(lflows, od, stage,
+                                queue->priority,
+                                queue->match, ds_cstr(&action),
+                                &queue->header_);
+                                
         for (size_t j = 0; j < queue->n_action; j++) {
             if (!strcmp(queue->key_action[j], "dscp")) {
                 ds_clear(&action);
@@ -7935,15 +7944,6 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
         }
         
         if (min || rate){
-
-        // Hai mod. Change ip id of packet   
-        ds_clear(&action);
-        ds_put_format(&action, "ip.id = %"PRId16"; next;",
-                        (uint16_t)(queue->id_queue));
-        ovn_lflow_add_with_hint(lflows, od, stage,
-                                queue->priority,
-                                queue->match, ds_cstr(&action),
-                                &queue->header_);
 
             if (rate) {
                 stage = ingress ? S_SWITCH_IN_QOS_METER : S_SWITCH_OUT_QOS_METER;
