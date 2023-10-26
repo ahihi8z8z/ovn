@@ -3231,7 +3231,9 @@ trace_actions(const struct ovnact *ovnacts, size_t ovnacts_len,
              * though, it would be easy enough to track the queue information
              * by adjusting uflow->skb_priority. */
             break;
-
+        // Hai mod
+        case OVNACT_SET_IP_ID:
+            break;
         case OVNACT_DNS_LOOKUP:
             execute_dns_lookup(ovnact_get_DNS_LOOKUP(a), uflow, super);
             break;
