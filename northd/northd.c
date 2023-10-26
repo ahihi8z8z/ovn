@@ -7936,7 +7936,18 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
         }
         
         if (min || rate){
+            // Hai mod 
+            ds_clear(&action);
             
+            ds_put_format(&action,
+                        "set_ip_id(%"PRId16"); next;",
+                        (uint16_t) (queue->id_queue));
+
+            ovn_lflow_add_with_hint(lflows, od, stage,
+                                    queue->priority,
+                                    queue->match, ds_cstr(&action),
+                                    &queue->header_);
+            // Hai end mod
             if (rate) {
                 stage = ingress ? S_SWITCH_IN_QOS_METER : S_SWITCH_OUT_QOS_METER;
                 ds_clear(&action);
