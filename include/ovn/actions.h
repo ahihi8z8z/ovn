@@ -128,6 +128,7 @@ struct collector_set_ids;
     OVNACT(CHK_LB_AFF,        ovnact_result)          \
     OVNACT(SAMPLE,            ovnact_sample)          \
     OVNACT(SET_IP_ID,         ovnact_set_ip_id)       \
+    OVNACT(PUSH_TUN_OPT,      ovnact_push_tun_opt)       \
 /* enum ovnact_type, with a member OVNACT_<ENUM> for each action. */
 enum OVS_PACKED_ENUM ovnact_type {
 #define OVNACT(ENUM, STRUCT) OVNACT_##ENUM,
@@ -404,6 +405,12 @@ struct ovnact_set_queue {
 struct ovnact_set_ip_id {
     struct ovnact ovnact;
     ovs_be16 nw_id;
+};
+
+/* OVNACT_PUSH_TUN_OPT. */
+struct ovnact_push_tun_opt {
+    struct ovnact ovnact;
+    ovs_be32 tun_opt;
 };
 
 /* OVNACT_DNS_LOOKUP, OVNACT_CHK_LB_HAIRPIN, OVNACT_CHK_LB_HAIRPIN_REPLY. */

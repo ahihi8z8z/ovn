@@ -960,6 +960,28 @@ lexer_get_int(struct lexer *lexer, int *value)
     }
 }
 
+// Hai mod for ovs_be32
+bool
+lexer_is_be32(const struct lexer *lexer)
+{
+    return (lexer->token.type == LEX_T_INTEGER
+            && lexer->token.format == LEX_F_DECIMAL
+            && ntohll(lexer->token.value.be32_int) <= OVS_BE32_MAX);
+}
+
+bool
+lexer_get_be32(struct lexer *lexer, ovs_be32 *value)
+{
+    if (lexer_is_int(lexer)) {
+        *value = ntohl(lexer->token.value.be32_int);
+        lexer_get(lexer);
+        return true;
+    } else {
+        *value = 0;
+        return false;
+    }
+}
+
 bool
 lexer_force_int(struct lexer *lexer, int *value)
 {

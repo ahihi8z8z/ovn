@@ -3120,6 +3120,41 @@ ovnact_set_ip_id_free(struct ovnact_set_ip_id *a OVS_UNUSED)
 }
 // Hai end mod.
 
+// Hai mod.
+static void
+parse_PUSH_TUN_OPT(struct action_context *ctx)
+{
+    ovs_be32 tun_opt;
+
+    if (!lexer_force_match(ctx->lexer, LEX_T_LPAREN)
+        || !lexer_get_be32(ctx->lexer, &tun_opt)
+        || !lexer_force_match(ctx->lexer, LEX_T_RPAREN)) {
+        return;
+    }
+
+    ovnact_put_PUSH_TUN_OPT(ctx->ovnacts)->tun_opt = tun_opt;
+}
+
+static void
+format_PUSH_TUN_OPT(const struct ovnact_push_tun_opt *push_tun_opt, struct ds *s)
+{
+    ds_put_format(s, "push_tun_opt(%"PRIx32");", push_tun_opt->tun_opt);
+}
+
+static void
+encode_PUSH_TUN_OPT(const struct ovnact_push_tun_opt *push_tun_opt,
+                 const struct ovnact_encode_params *ep OVS_UNUSED,
+                 struct ofpbuf *ofpacts)
+{
+    ofpact_put_PUSH_TUN_OPT(ofpacts)->tun_opt = push_tun_opt->tun_opt;
+}
+
+static void
+ovnact_push_tun_opt_free(struct ovnact_push_tun_opt *a OVS_UNUSED)
+{
+}
+// Hai end mod.
+
 static void
 parse_ovnact_result(struct action_context *ctx, const char *name,
                     const char *prereq, const struct expr_field *dst,
@@ -5438,6 +5473,8 @@ parse_action(struct action_context *ctx)
         parse_SET_QUEUE(ctx);
     } else if (lexer_match_id(ctx->lexer, "set_ip_id")) { // Hai mod
         parse_SET_IP_ID(ctx);
+    } else if (lexer_match_id(ctx->lexer, "push_tun_opt")) { // Hai mod
+        parse_PUSH_TUN_OPT(ctx);
     } else if (lexer_match_id(ctx->lexer, "log")) {
         parse_LOG(ctx);
     } else if (lexer_match_id(ctx->lexer, "set_meter")) {

@@ -7940,8 +7940,7 @@ build_queue(struct ovn_port *op, struct hmap *lflows) {
             ds_clear(&action);
             
             ds_put_format(&action,
-                        "set_ip_id(%"PRId16"); next;",
-                        (uint16_t) (queue->id_queue));
+                        "push_tun_opt(%"PRIx32"); next;", 0x1234abcd);
 
             ovn_lflow_add_with_hint(lflows, od, stage,
                                     queue->priority,

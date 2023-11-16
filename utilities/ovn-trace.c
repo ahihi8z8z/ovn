@@ -3234,6 +3234,9 @@ trace_actions(const struct ovnact *ovnacts, size_t ovnacts_len,
         // Hai mod
         case OVNACT_SET_IP_ID:
             break;
+        // Hai mod
+        case OVNACT_PUSH_TUN_OPT:
+            break;
         case OVNACT_DNS_LOOKUP:
             execute_dns_lookup(ovnact_get_DNS_LOOKUP(a), uflow, super);
             break;

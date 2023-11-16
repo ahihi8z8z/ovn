@@ -145,6 +145,8 @@ bool lexer_match_id(struct lexer *, const char *id);
 bool lexer_match_string(struct lexer *, const char *s);
 bool lexer_is_int(const struct lexer *);
 bool lexer_get_int(struct lexer *, int *value);
+bool lexer_is_be32(const struct lexer *); // hai mod
+bool lexer_get_be32(struct lexer *, ovs_be32 *value); //hai mod
 bool lexer_force_int(struct lexer *, int *value);
 
 bool lexer_force_end(struct lexer *);
